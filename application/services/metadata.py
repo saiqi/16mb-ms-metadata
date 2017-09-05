@@ -56,11 +56,14 @@ class MetadataService(object):
 
         return None
 
+    @staticmethod
+    def _build_output(_input, function_name):
+        return 'SELECT * FROM {}(({}))'.format(function_name, _input)
+
     @rpc
-    def add_transformation(self, _id, _type, _function, _input=None, target_table=None, trigger_tables=None,
+    def add_transformation(self, _id, _type, _function, job_id, _input=None, target_table=None, trigger_tables=None,
                            depends_on=None):
-        self.database.transformations.create_index([('type', ASCENDING), ('trigger_tables', ASCENDING),
-                                                    ('materialized', ASCENDING)])
+        self.database.transformations.create_index('trigger_tables')
         self.database.transformations.create_index('id', unique=True)
 
         function_only = False
@@ -70,6 +73,8 @@ class MetadataService(object):
             if not (target_table is None and trigger_tables is None and depends_on is None):
                 raise MetadataServiceError(
                     'Function only transformation can not have a not none target table, trigger tables or dependency')
+
+        function_name = self._extract_function_name(_function)
 
         materialized = False
         if target_table is not None:
@@ -81,13 +86,16 @@ class MetadataService(object):
         if _input is not None and self._check_query(_input) is False:
             raise MetadataServiceError('Bad formatted query: {}'.format(_input))
 
-        if self._check_function(_function) is False:
-            raise MetadataServiceError('Bad formatted function: {}'.format(_function))
+        # if self._check_function(_function) is False:
+        #     raise MetadataServiceError('Bad formatted function: {}'.format(_function))
 
-        function_name = self._extract_function_name(_function)
+        if depends_on is not None \
+                and self.database.transformations.find_one({'id': depends_on, 'job_id': job_id}) is None:
+            raise MetadataServiceError('Unknown dependency {} for job_id {}'.format(depends_on, job_id))
 
-        if depends_on is not None and self.database.transformations.find_one({'id': depends_on}) is None:
-            raise MetadataServiceError('Unknown dependency {}'.format(depends_on))
+        output = None
+        if materialized is True:
+            output = self._build_output(_input, function_name)
 
         self.database.transformations.update_one(
             {'id': _id},
@@ -95,7 +103,9 @@ class MetadataService(object):
                 '$set': {
                     'type': _type,
                     'function': _function,
+                    'job_id': job_id,
                     'input': _input,
+                    'output': output,
                     'target_table': target_table,
                     'trigger_tables': trigger_tables,
                     'depends_on': depends_on,
@@ -146,10 +156,9 @@ class MetadataService(object):
             },
             {
                 '$group': {
-                    '_id': None,
-                    'max_size': {'$max': {'$size': '$dependencies'}},
+                    '_id': '$job_id',
                     'transformations': {
-                        '$push': {
+                        '$addToSet': {
                             'id': '$id',
                             'materialized': '$materialized',
                             'function_name': '$function_name',
@@ -158,20 +167,10 @@ class MetadataService(object):
                             'function_only': '$function_only',
                             'type': '$type',
                             'input': '$input',
+                            'output': '$output',
                             'process_date': '$process_date',
-                            'size': {'$size': '$dependencies'},
+                            'index': {'$size': '$dependencies'},
                             'dependencies': '$dependencies'
-                        }
-                    }
-                }
-            },
-            {
-                '$project': {
-                    'transformations': {
-                        '$filter': {
-                            'input': '$transformations',
-                            'as': 'transformations',
-                            'cond': {'$eq': ['$$transformations.size', '$max_size']}
                         }
                     }
                 }
@@ -180,8 +179,22 @@ class MetadataService(object):
                 '$unwind': '$transformations'
             },
             {
+                '$sort': {'transformations.index': 1}
+            },
+            {
+                '$group': {
+                    '_id': '$_id',
+                    'transformations': {
+                        '$push': {
+                            'transformations': '$transformations'
+                        }
+                    }
+                }
+            },
+            {
                 '$project': {
-                    '_id': False
+                    'job_id': '$_id',
+                    'transformations': '$transformations.transformations'
                 }
             }
         ])
@@ -189,6 +202,6 @@ class MetadataService(object):
         result = list(cursor)
 
         if len(result) != 0:
-            return bson.json_util.dumps(list(cursor)[0])
+            return bson.json_util.dumps(result)
 
         return None

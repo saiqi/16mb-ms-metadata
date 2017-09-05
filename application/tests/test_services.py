@@ -21,6 +21,7 @@ def test_add_transformation(database):
 
     _id = '0'
     _type = 'transform'
+    job_id = 'myjob'
     _function = '''
     CREATE FUNCTION my_function (data DOUBLE) RETURN TABLE (result DOUBLE) LANGUAGE PYTHON
     {
@@ -28,7 +29,7 @@ def test_add_transformation(database):
     }
     '''
 
-    service.add_transformation(_id, _type, _function)
+    service.add_transformation(_id, _type, _function, job_id)
     trans = database.transformations.find_one({'id': _id})
     assert trans['id'] == _id
     assert trans['materialized'] is False
@@ -36,16 +37,16 @@ def test_add_transformation(database):
     assert trans['function_name'] == 'my_function'
 
     with pytest.raises(MetadataServiceError):
-        service.add_transformation(_id, _type, 'foo')
+        service.add_transformation(_id, _type, 'foo', job_id)
 
     with pytest.raises(MetadataServiceError):
-        service.add_transformation(_id, 'foo', _function)
+        service.add_transformation(_id, 'foo', _function, job_id)
 
     with pytest.raises(MetadataServiceError):
-        service.add_transformation(_id, _type, _function, depends_on='other')
+        service.add_transformation(_id, _type, _function, job_id, depends_on='other')
 
     with pytest.raises(MetadataServiceError):
-        service.add_transformation(_id, _type, _function, target_table='table')
+        service.add_transformation(_id, _type, _function, job_id, target_table='table')
 
     _input = '''
     SELECT * FROM MYSOURCE
@@ -55,18 +56,19 @@ def test_add_transformation(database):
 
     target_table = 'MYTARGET'
 
-    service.add_transformation(_id, _type, _function, _input=_input, target_table=target_table,
+    service.add_transformation(_id, _type, _function, job_id, _input=_input, target_table=target_table,
                                trigger_tables=trigger_tables)
 
     trans = database.transformations.find_one({'id': _id})
     assert trans['materialized'] is True
     assert trans['function_only'] is False
+    assert trans['output']
 
     with pytest.raises(MetadataServiceError):
-        service.add_transformation(_id, _type, _function, _input='bar', target_table=target_table,
+        service.add_transformation(_id, _type, _function, job_id, _input='bar', target_table=target_table,
                                    trigger_tables=trigger_tables)
 
-    service.add_transformation(_id, _type, _function, _input=_input, target_table=target_table,
+    service.add_transformation(_id, _type, _function, job_id, _input=_input, target_table=target_table,
                                trigger_tables=trigger_tables, depends_on=_id)
     trans = list(database.transformations.find({'depends_on': _id}))
     assert len(trans) == 1
@@ -161,6 +163,7 @@ def test_get_update_pipeline(database):
             'function_only': True,
             'trigger_tables': ['source'],
             'type': 'transform',
+            'job_id': 'myjob',
             'input': None
         },
         {
@@ -173,6 +176,7 @@ def test_get_update_pipeline(database):
             'function_only': True,
             'trigger_tables': ['source'],
             'type': 'transform',
+            'job_id': 'myjob',
             'input': None
         },
         {
@@ -185,6 +189,7 @@ def test_get_update_pipeline(database):
             'function_only': True,
             'trigger_tables': ['source'],
             'type': 'transform',
+            'job_id': 'myjob',
             'input': None
         },
         {
@@ -197,6 +202,7 @@ def test_get_update_pipeline(database):
             'function_only': True,
             'trigger_tables': ['source'],
             'type': 'transform',
+            'job_id': 'myjob',
             'input': None
         },
         {
@@ -209,11 +215,31 @@ def test_get_update_pipeline(database):
             'function_only': True,
             'trigger_tables': ['source'],
             'type': 'transform',
+            'job_id': 'myjob',
+            'input': None
+        },
+        {
+            'depends_on': None,
+            'id': '5',
+            'materialized': False,
+            'function_name': 'my_function',
+            'function': 'CREATE FUNCTION my_function (data DOUBLE) RETURN TABLE (result DOUBLE) LANGUAGE PYTHON{}',
+            'target_table': 'mytable',
+            'function_only': True,
+            'trigger_tables': ['source'],
+            'type': 'transform',
+            'job_id': 'myjob2',
             'input': None
         }
     ])
 
-    pipeline = bson.json_util.loads(service.get_update_pipeline('source'))
+    pipeline = service.get_update_pipeline('source')
+    pipeline = bson.json_util.loads(pipeline)
 
-    assert pipeline['transformations']['id'] == '4'
-    assert len(pipeline['transformations']['dependencies']) == 4
+    assert len(pipeline) == 2
+
+    for p in pipeline:
+        if p['_id'] == 'myjob':
+            assert len(p['transformations']) == 5
+        else:
+            assert len(p['transformations']) == 1
