@@ -138,6 +138,16 @@ class MetadataService(object):
         return self.types
 
     @rpc
+    def get_all_transformations(self):
+        cursor = self.database.transformations.find({})
+
+        return bson.json_util.dumps(list(cursor))
+
+    @rpc
+    def get_transformation(self, _id):
+        return bson.json_util.dumps(self.database.transformations.find_one({'id': _id}))
+
+    @rpc
     def get_update_pipeline(self, table):
         cursor = self.database.transformations.aggregate([
             {

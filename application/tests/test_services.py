@@ -36,8 +36,8 @@ def test_add_transformation(database):
     assert trans['function_only'] is True
     assert trans['function_name'] == 'my_function'
 
-    with pytest.raises(MetadataServiceError):
-        service.add_transformation(_id, _type, 'foo', job_id)
+    # with pytest.raises(MetadataServiceError):
+    #     service.add_transformation(_id, _type, 'foo', job_id)
 
     with pytest.raises(MetadataServiceError):
         service.add_transformation(_id, 'foo', _function, job_id)
@@ -243,3 +243,47 @@ def test_get_update_pipeline(database):
             assert len(p['transformations']) == 5
         else:
             assert len(p['transformations']) == 1
+
+
+def test_get_all_transformations(database):
+    service = worker_factory(MetadataService, database=database)
+    result = bson.json_util.loads(service.get_all_transformations())
+    assert len(result) == 0
+
+    database.transformations.insert_one({
+        'depends_on': None,
+        'id': '0',
+        'materialized': False,
+        'function_name': 'my_function',
+        'function': 'CREATE FUNCTION my_function (data DOUBLE) RETURN TABLE (result DOUBLE) LANGUAGE PYTHON{}',
+        'target_table': None,
+        'function_only': True,
+        'trigger_tables': None,
+        'type': 'transform', 'input': None,
+        'creation_date': datetime.datetime.utcnow(),
+        'process_date': None
+    })
+    result = bson.json_util.loads(service.get_all_transformations())
+    assert len(result) == 1
+
+
+def test_get_transformation(database):
+    service = worker_factory(MetadataService, database=database)
+    result = bson.json_util.loads(service.get_transformation('0'))
+    assert not result
+
+    database.transformations.insert_one({
+        'depends_on': None,
+        'id': '0',
+        'materialized': False,
+        'function_name': 'my_function',
+        'function': 'CREATE FUNCTION my_function (data DOUBLE) RETURN TABLE (result DOUBLE) LANGUAGE PYTHON{}',
+        'target_table': None,
+        'function_only': True,
+        'trigger_tables': None,
+        'type': 'transform', 'input': None,
+        'creation_date': datetime.datetime.utcnow(),
+        'process_date': None
+    })
+    result = bson.json_util.loads(service.get_transformation('0'))
+    assert result['id'] == '0'
