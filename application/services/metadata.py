@@ -138,13 +138,13 @@ class MetadataService(object):
 
     @rpc
     def get_all_transformations(self):
-        cursor = self.database.transformations.find({})
+        cursor = self.database.transformations.find({}, {'_id': 0})
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
     def get_transformation(self, _id):
-        return bson.json_util.dumps(self.database.transformations.find_one({'id': _id}))
+        return bson.json_util.dumps(self.database.transformations.find_one({'id': _id}, {'_id': 0}))
 
     @rpc
     def get_update_pipeline(self, table):
@@ -241,11 +241,11 @@ class MetadataService(object):
 
     @rpc
     def get_all_queries(self):
-        cursor = self.database.queries.find({})
+        cursor = self.database.queries.find({}, {'_id': 0})
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
     def get_query(self, _id):
-        return bson.json_util.dumps(self.database.queries.find_one({'id': _id}))
+        return bson.json_util.dumps(self.database.queries.find_one({'id': _id}, {'_id': 0}))
 
