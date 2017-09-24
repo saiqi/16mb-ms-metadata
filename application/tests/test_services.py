@@ -287,3 +287,55 @@ def test_get_transformation(database):
     })
     result = bson.json_util.loads(service.get_transformation('0'))
     assert result['id'] == '0'
+
+
+def test_add_query(database):
+    service = worker_factory(MetadataService, database=database)
+    service.add_query('0', 'MyQuery', 'SELECT * FROM TOTO')
+
+    doc = database.queries.find_one({'id': '0'})
+    assert doc
+    assert doc['creation_date']
+    assert doc['id'] == '0'
+
+    with pytest.raises(MetadataServiceError):
+        service.add_query('0', 'MyQuery', 'foo')
+
+
+def test_delete_query(database):
+    service = worker_factory(MetadataService, database=database)
+    database.queries.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'sql': 'SELECT * FROM TOTO',
+        'parameters': None
+    })
+
+    service.delete_query('0')
+    assert not database.queries.find_one({'id': '0'})
+
+
+def test_get_all_queries(database):
+    service = worker_factory(MetadataService, database=database)
+    database.queries.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'sql': 'SELECT * FROM TOTO',
+        'parameters': None
+    })
+
+    result = bson.json_util.loads(service.get_all_queries())
+    assert len(result) == 1
+
+
+def test_get_query(database):
+    service = worker_factory(MetadataService, database=database)
+    database.queries.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'sql': 'SELECT * FROM TOTO',
+        'parameters': None
+    })
+
+    result = bson.json_util.loads(service.get_query('0'))
+    assert result['id'] == '0'

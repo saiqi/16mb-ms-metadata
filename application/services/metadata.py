@@ -1,6 +1,5 @@
 import datetime
 from nameko.rpc import rpc
-from pymongo import ASCENDING
 import bson.json_util
 from nameko_mongodb.database import MongoDatabase
 import sqlparse
@@ -15,7 +14,7 @@ class MetadataService(object):
 
     database = MongoDatabase(result_backend=False)
 
-    types = ['transform', 'predict', 'fit']
+    TYPES = ['transform', 'predict', 'fit']
 
     @staticmethod
     def _check_function(_function):
@@ -80,7 +79,7 @@ class MetadataService(object):
         if target_table is not None:
             materialized = True
 
-        if _type not in self.types:
+        if _type not in self.TYPES:
             raise MetadataServiceError('Unavailable types {}'.format(_type))
 
         if _input is not None and self._check_query(_input) is False:
@@ -135,7 +134,7 @@ class MetadataService(object):
 
     @rpc
     def get_types(self):
-        return self.types
+        return self.TYPES
 
     @rpc
     def get_all_transformations(self):
@@ -215,3 +214,38 @@ class MetadataService(object):
             return bson.json_util.dumps(result)
 
         return None
+
+    @rpc
+    def add_query(self, _id, name, sql, parameters=None):
+        self.database.queries.create_index('id', unique=True)
+
+        if self._check_query(sql) is False:
+            raise MetadataServiceError('An error occured while parsing SQL query: {}'.format(sql))
+
+        self.database.queries.update_one({'id': _id}, {
+            '$set': {
+                'name': name,
+                'sql': sql,
+                'parameters': parameters,
+                'creation_date': datetime.datetime.utcnow()
+            }
+        }, upsert=True)
+
+        return {'id': _id}
+
+    @rpc
+    def delete_query(self, _id):
+        self.database.queries.delete_one({'id': _id})
+
+        return {'id': _id}
+
+    @rpc
+    def get_all_queries(self):
+        cursor = self.database.queries.find({})
+
+        return bson.json_util.dumps(list(cursor))
+
+    @rpc
+    def get_query(self, _id):
+        return bson.json_util.dumps(self.database.queries.find_one({'id': _id}))
+
