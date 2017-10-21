@@ -339,3 +339,94 @@ def test_get_query(database):
 
     result = bson.json_util.loads(service.get_query('0'))
     assert result['id'] == '0'
+
+
+def test_add_template(database):
+    service = worker_factory(MetadataService, database=database)
+    service.add_template('0', 'MyTemplate', '<svg></svg>')
+
+    doc = database.templates.find_one({'id': '0'})
+    assert doc
+    assert doc['creation_date']
+    assert doc['id'] == '0'
+
+
+def test_delete_template(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'svg': '<svg></svg>'
+    })
+
+    service.delete_template('0')
+    assert not database.templates.find_one({'id': '0'})
+
+
+def test_get_all_templates(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'svg': '<svg></svg>'
+    })
+
+    result = bson.json_util.loads(service.get_all_templates())
+    assert len(result) == 1
+
+
+def test_get_template(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'svg': '<svg></svg>'
+    })
+
+    result = bson.json_util.loads(service.get_template('0'))
+    assert result['id'] == '0'
+
+
+def test_add_query_to_template(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'svg': '<svg></svg>'
+    })
+
+    database.queries.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'sql': 'SELECT * FROM TOTO WHERE TITI = %s',
+        'parameters': ['titi']
+    })
+
+    service.add_query_to_template('0', '0', referential_parameters=[{'titi': 'toto'}])
+    res = database.templates.find_one({'id': '0'})
+    assert res['queries']
+    assert res['queries'][0]['id'] == '0'
+
+    service.add_query_to_template('0', '0', referential_parameters=[{'titi': 'toto'}], labels={'col': 'entity'})
+    res = database.templates.find_one({'id': '0'})
+    assert len(res['queries']) == 1
+    assert res['queries'][0]['labels']
+
+    with pytest.raises(MetadataServiceError):
+        service.add_query_to_template('0', '1', referential_parameters=[{'titi': 'toto'}])
+
+    with pytest.raises(MetadataServiceError):
+        service.add_query_to_template('0', '0', referential_parameters=[{'tutu': 'toto'}])
+
+
+def test_delete_query_from_template(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'svg': '<svg></svg>',
+        'queries': [{'id': '0'}]
+    })
+    service.delete_query_from_template('0', '0')
+    res = database.templates.find_one({'id': '0'})
+    assert len(res['queries']) == 0

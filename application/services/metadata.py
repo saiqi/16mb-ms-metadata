@@ -249,3 +249,92 @@ class MetadataService(object):
     def get_query(self, _id):
         return bson.json_util.dumps(self.database.queries.find_one({'id': _id}, {'_id': 0}))
 
+    @rpc
+    def add_template(self, _id, name, svg):
+        self.database.templates.create_index('id', unique=True)
+
+        self.database.templates.update_one({'id': _id}, {
+            '$set': {
+                'name': name,
+                'svg': svg,
+                'creation_date': datetime.datetime.utcnow()
+            }
+        }, upsert=True)
+
+        return {'id': _id}
+
+    @rpc
+    def delete_template(self, _id):
+        self.database.templates.delete_one({'id': _id})
+
+        return {'id': _id}
+
+    @rpc
+    def get_all_templates(self):
+        cursor = self.database.templates.find({}, {'_id': 0})
+
+        return bson.json_util.dumps(list(cursor))
+
+    @rpc
+    def get_template(self, _id):
+        return bson.json_util.dumps(self.database.templates.find_one({'id': _id}, {'_id': 0}))
+
+    @rpc
+    def add_query_to_template(self, _id, query_id, referential_parameters=None, labels=None):
+        query = self.database.queries.find_one({'id': query_id})
+
+        if query is None:
+            raise MetadataServiceError('Query {} not found'.format(query_id))
+
+        if referential_parameters is not None:
+            query_parameters = query['parameters']
+            if query_parameters is None:
+                raise MetadataServiceError('Query {} does not have parameters'.format(query_id))
+            check_ref_params = [list(r.keys())[0] for r in referential_parameters if
+                                list(r.keys())[0] in query_parameters]
+
+            if len(check_ref_params) != len(referential_parameters):
+                raise MetadataServiceError('Some referential parameters mismatching query {} parameters'
+                                           .format(query_id))
+
+        res = self.database.templates.update_one(
+            {
+                'id': _id,
+                'queries': {
+                    '$not': {
+                        '$elemMatch': {
+                            'id': query_id
+                        }
+                    }
+                }
+            },
+            {
+                '$addToSet': {
+                    'queries': {
+                        'id': query_id,
+                        'referential_parameters': referential_parameters,
+                        'labels': labels
+                    }
+                }
+            }
+        )
+
+        if res.modified_count == 0:
+            res = self.database.templates.update_one(
+                {'id': _id, 'queries.id': query_id},
+                {
+                    '$set': {
+                        'queries.$.referential_parameters': referential_parameters,
+                        'queries.$.labels': labels
+                    }
+                }
+            )
+
+    @rpc
+    def delete_query_from_template(self, _id, query_id):
+        self.database.templates.update_one(
+            {'id': _id},
+            {
+                '$pull': {'queries': {'id': query_id}}
+            }
+        )
