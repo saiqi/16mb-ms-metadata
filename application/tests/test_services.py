@@ -430,3 +430,15 @@ def test_delete_query_from_template(database):
     service.delete_query_from_template('0', '0')
     res = database.templates.find_one({'id': '0'})
     assert len(res['queries']) == 0
+
+
+def test_update_svg_in_template(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'svg': '<svg></svg>'
+    })
+    service.update_svg_in_template('0', '<svg>toto</svg>')
+    res = database.templates.find_one({'id': '0'})
+    assert res['svg'] == '<svg>toto</svg>'

@@ -340,3 +340,14 @@ class MetadataService(object):
                 '$pull': {'queries': {'id': query_id}}
             }
         )
+
+    @rpc
+    def update_svg_in_template(self, _id, svg):
+        self.database.templates.update_one(
+            {'id': _id},
+            {
+                '$set': {
+                    'svg': svg
+                }
+            }
+        )
