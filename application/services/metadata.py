@@ -250,13 +250,14 @@ class MetadataService(object):
         return bson.json_util.dumps(self.database.queries.find_one({'id': _id}, {'_id': 0}))
 
     @rpc
-    def add_template(self, _id, name, svg):
+    def add_template(self, _id, name, language, context):
         self.database.templates.create_index('id', unique=True)
 
         self.database.templates.update_one({'id': _id}, {
             '$set': {
                 'name': name,
-                'svg': svg,
+                'language': language,
+                'context': context,
                 'creation_date': datetime.datetime.utcnow()
             }
         }, upsert=True)

@@ -343,7 +343,7 @@ def test_get_query(database):
 
 def test_add_template(database):
     service = worker_factory(MetadataService, database=database)
-    service.add_template('0', 'MyTemplate', '<svg></svg>')
+    service.add_template('0', 'MyTemplate', 'FR', 'ctx')
 
     doc = database.templates.find_one({'id': '0'})
     assert doc
@@ -356,7 +356,8 @@ def test_delete_template(database):
     database.templates.insert_one({
         'id': '0',
         'name': 'MyQuery',
-        'svg': '<svg></svg>'
+        'language': 'FR',
+        'context': 'ctx'
     })
 
     service.delete_template('0')
@@ -368,7 +369,8 @@ def test_get_all_templates(database):
     database.templates.insert_one({
         'id': '0',
         'name': 'MyQuery',
-        'svg': '<svg></svg>'
+        'language': 'FR',
+        'context': 'ctx'
     })
 
     result = bson.json_util.loads(service.get_all_templates())
@@ -380,7 +382,8 @@ def test_get_template(database):
     database.templates.insert_one({
         'id': '0',
         'name': 'MyQuery',
-        'svg': '<svg></svg>'
+        'language': 'FR',
+        'context': 'ctx'
     })
 
     result = bson.json_util.loads(service.get_template('0'))
@@ -392,7 +395,8 @@ def test_add_query_to_template(database):
     database.templates.insert_one({
         'id': '0',
         'name': 'MyQuery',
-        'svg': '<svg></svg>'
+        'language': 'FR',
+        'context': 'ctx'
     })
 
     database.queries.insert_one({
@@ -424,7 +428,8 @@ def test_delete_query_from_template(database):
     database.templates.insert_one({
         'id': '0',
         'name': 'MyQuery',
-        'svg': '<svg></svg>',
+        'language': 'FR',
+        'context': 'ctx',
         'queries': [{'id': '0'}]
     })
     service.delete_query_from_template('0', '0')
@@ -437,7 +442,8 @@ def test_update_svg_in_template(database):
     database.templates.insert_one({
         'id': '0',
         'name': 'MyQuery',
-        'svg': '<svg></svg>'
+        'language': 'FR',
+        'context': 'ctx'
     })
     service.update_svg_in_template('0', '<svg>toto</svg>')
     res = database.templates.find_one({'id': '0'})
