@@ -61,7 +61,7 @@ class MetadataService(object):
 
     @rpc
     def add_transformation(self, _id, _type, _function, job_id, _input=None, target_table=None, trigger_tables=None,
-                           depends_on=None):
+                           depends_on=None, parameters=None):
         self.database.transformations.create_index('trigger_tables')
         self.database.transformations.create_index('id', unique=True)
 
@@ -104,6 +104,7 @@ class MetadataService(object):
                     'function': _function,
                     'job_id': job_id,
                     'input': _input,
+                    'parameters': parameters,
                     'output': output,
                     'target_table': target_table,
                     'trigger_tables': trigger_tables,
@@ -177,6 +178,7 @@ class MetadataService(object):
                             'type': '$type',
                             'input': '$input',
                             'output': '$output',
+                            'parameters': '$parameters',
                             'process_date': '$process_date',
                             'index': {'$size': '$dependencies'},
                             'dependencies': '$dependencies'
