@@ -139,7 +139,8 @@ class MetadataService(object):
 
     @rpc
     def get_all_transformations(self):
-        cursor = self.database.transformations.find({}, {'_id': 0})
+        cursor = self.database.transformations.find({}, {'_id': 0, 'input': 0, 'function': 0, 'output': 0, 'parameters': 0,
+                                                         })
 
         return bson.json_util.dumps(list(cursor))
 
@@ -243,7 +244,7 @@ class MetadataService(object):
 
     @rpc
     def get_all_queries(self):
-        cursor = self.database.queries.find({}, {'_id': 0})
+        cursor = self.database.queries.find({}, {'_id': 0, 'sql': 0, 'parameters': 0})
 
         return bson.json_util.dumps(list(cursor))
 
@@ -274,7 +275,7 @@ class MetadataService(object):
 
     @rpc
     def get_all_templates(self):
-        cursor = self.database.templates.find({}, {'_id': 0})
+        cursor = self.database.templates.find({}, {'_id': 0, 'svg': 0, 'queries': 0})
 
         return bson.json_util.dumps(list(cursor))
 
