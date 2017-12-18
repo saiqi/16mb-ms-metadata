@@ -23,7 +23,7 @@ def test_add_transformation(database):
     _type = 'transform'
     job_id = 'myjob'
     _function = '''
-    CREATE FUNCTION my_function (data DOUBLE) RETURN TABLE (result DOUBLE) LANGUAGE PYTHON
+    CREATE FUNCTION my_function(data STRING) RETURN DOUBLE LANGUAGE PYTHON
     {
 
     }

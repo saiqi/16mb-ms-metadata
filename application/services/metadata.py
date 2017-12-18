@@ -1,4 +1,5 @@
 import datetime
+import re
 from nameko.rpc import rpc
 import bson.json_util
 from nameko_mongodb.database import MongoDatabase
@@ -47,11 +48,10 @@ class MetadataService(object):
 
     @staticmethod
     def _extract_function_name(_function):
-        sqls = sqlparse.parse(_function)
+        regex = re.search(r'CREATE FUNCTION ([A-Za-z_]+)', _function)
 
-        for token in sqls[0].tokens:
-            if isinstance(token, sqlparse.sql.Identifier):
-                return token.value
+        if regex is not None:
+            return regex.group(1)
 
         return None
 
