@@ -284,7 +284,8 @@ class MetadataService(object):
         return bson.json_util.dumps(self.database.templates.find_one({'id': _id}, {'_id': 0}))
 
     @rpc
-    def add_query_to_template(self, _id, query_id, referential_parameters=None, labels=None, referential_results=None):
+    def add_query_to_template(self, _id, query_id, referential_parameters=None, labels=None, referential_results=None,
+                              user_parameters=None):
         query = self.database.queries.find_one({'id': query_id})
 
         if query is None:
@@ -318,7 +319,8 @@ class MetadataService(object):
                         'id': query_id,
                         'referential_parameters': referential_parameters,
                         'labels': labels,
-                        'referential_results': referential_results
+                        'referential_results': referential_results,
+                        'user_parameters': user_parameters
                     }
                 }
             }
@@ -331,7 +333,8 @@ class MetadataService(object):
                     '$set': {
                         'queries.$.referential_parameters': referential_parameters,
                         'queries.$.labels': labels,
-                        'queries.$.referential_results': referential_results
+                        'queries.$.referential_results': referential_results,
+                        'queries.$.user_parameters': user_parameters
                     }
                 }
             )
