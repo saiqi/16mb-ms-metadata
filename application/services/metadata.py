@@ -341,16 +341,18 @@ class MetadataService(object):
 
     @rpc
     def delete_query_from_template(self, _id, query_id):
-        self.database.templates.update_one(
+        result = self.database.templates.update_one(
             {'id': _id},
             {
                 '$pull': {'queries': {'id': query_id}}
             }
         )
+        if result.modified_count == 0:
+            raise MetadataServiceError('Nothing has been deleted')
 
     @rpc
     def update_svg_in_template(self, _id, svg):
-        self.database.templates.update_one(
+        result = self.database.templates.update_one(
             {'id': _id},
             {
                 '$set': {
@@ -358,3 +360,5 @@ class MetadataService(object):
                 }
             }
         )
+        if result.modified_count == 0:
+            raise MetadataServiceError('Nothing has been updated')

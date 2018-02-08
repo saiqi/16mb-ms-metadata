@@ -436,6 +436,9 @@ def test_delete_query_from_template(database):
     res = database.templates.find_one({'id': '0'})
     assert len(res['queries']) == 0
 
+    with pytest.raises(MetadataServiceError):
+        service.delete_query_from_template('1', '1')
+
 
 def test_update_svg_in_template(database):
     service = worker_factory(MetadataService, database=database)
