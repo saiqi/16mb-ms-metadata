@@ -253,14 +253,16 @@ class MetadataService(object):
         return bson.json_util.dumps(self.database.queries.find_one({'id': _id}, {'_id': 0}))
 
     @rpc
-    def add_template(self, _id, name, language, context):
+    def add_template(self, _id, name, language, context, bundle):
         self.database.templates.create_index('id', unique=True)
+        self.database.templates.create_index('bundle')
 
         self.database.templates.update_one({'id': _id}, {
             '$set': {
                 'name': name,
                 'language': language,
                 'context': context,
+                'bundle': bundle,
                 'creation_date': datetime.datetime.utcnow()
             }
         }, upsert=True)
@@ -276,6 +278,12 @@ class MetadataService(object):
     @rpc
     def get_all_templates(self):
         cursor = self.database.templates.find({}, {'_id': 0, 'svg': 0, 'queries': 0})
+
+        return bson.json_util.dumps(list(cursor))
+
+    @rpc
+    def get_templates_by_bundle(self, bundle):
+        cursor = self.database.templates.find({'bundle': bundle}, {'_id': 0, 'svg': 0, 'queries': 0})
 
         return bson.json_util.dumps(list(cursor))
 

@@ -343,7 +343,7 @@ def test_get_query(database):
 
 def test_add_template(database):
     service = worker_factory(MetadataService, database=database)
-    service.add_template('0', 'MyTemplate', 'FR', 'ctx')
+    service.add_template('0', 'MyTemplate', 'FR', 'ctx', 'bundle')
 
     doc = database.templates.find_one({'id': '0'})
     assert doc
@@ -357,7 +357,8 @@ def test_delete_template(database):
         'id': '0',
         'name': 'MyQuery',
         'language': 'FR',
-        'context': 'ctx'
+        'context': 'ctx',
+        'bundle': 'bundle'
     })
 
     service.delete_template('0')
@@ -370,11 +371,27 @@ def test_get_all_templates(database):
         'id': '0',
         'name': 'MyQuery',
         'language': 'FR',
-        'context': 'ctx'
+        'context': 'ctx',
+        'bundle': 'bundle'
     })
 
     result = bson.json_util.loads(service.get_all_templates())
     assert len(result) == 1
+
+
+def test_get_templates_by_bundle(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'language': 'FR',
+        'context': 'ctx',
+        'bundle': 'bundle'
+    })
+
+    result = bson.json_util.loads(service.get_templates_by_bundle('bundle'))
+    assert len(result) == 1
+
 
 
 def test_get_template(database):
