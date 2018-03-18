@@ -343,7 +343,7 @@ def test_get_query(database):
 
 def test_add_template(database):
     service = worker_factory(MetadataService, database=database)
-    service.add_template('0', 'MyTemplate', 'FR', 'ctx', 'bundle')
+    service.add_template('0', 'MyTemplate', 'FR', 'ctx', 'bundle', {'format': 'myFormat'})
 
     doc = database.templates.find_one({'id': '0'})
     assert doc
