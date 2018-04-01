@@ -1,8 +1,10 @@
 import datetime
 import re
 from nameko.rpc import rpc
+from nameko.events import event_handler
 import bson.json_util
 from nameko_mongodb.database import MongoDatabase
+from pymongo import ASCENDING
 import sqlparse
 
 
@@ -16,6 +18,41 @@ class MetadataService(object):
     database = MongoDatabase(result_backend=False)
 
     TYPES = ['transform', 'predict', 'fit']
+
+    def _delete_outdated_subscriptions(self, user, meta_type, new_sub, old_sub):
+        old = set()
+        if meta_type in old_sub:
+            old = set(r for r in old_sub['subscription'][meta_type])
+
+        new = set()
+        if meta_type in new_sub:
+            new = set(new_sub[meta_type])
+
+        diff = old - new
+        self.database[meta_type].update_many(
+            {meta_type: {'$in': list(diff)}},
+            {'$pull': {'allowed_users': user}}
+        )
+
+    def _add_subscriptions(self, user, meta_type, sub):
+        if meta_type in sub:
+            self.database[meta_type].update_many(
+                {'id': {'$in': sub[meta_type]}},
+                {'$addToSet': {'allowed_users': user}}
+            )
+
+    @event_handler('subscription_manager', 'user_sub')
+    def handle_suscription(self, payload):
+        user = payload['user']
+        if 'metadata' in payload['subscription']:
+            metadata = payload['subscription']['metadata']
+            old_sub = self.database.subscriptions.find_one({'user': user}, {'subscription'})
+            if old_sub:
+                for t in ('templates',):
+                    self._delete_outdated_subscriptions(user, t, metadata, old_sub)
+                    self._add_subscriptions(user, t, metadata)
+            self.database.subscriptions.update_one({'user': user},
+                {'$set': {'subscription': metadata}}, upsert=True)
 
     @staticmethod
     def _check_function(_function):
@@ -254,7 +291,8 @@ class MetadataService(object):
 
     @rpc
     def add_template(self, _id, name, language, context, bundle, picture):
-        self.database.templates.create_index('id', unique=True)
+        self.database.templates.create_index([('id', ASCENDING), ('allowed_users', ASCENDING)])
+        self.database.templates.create_index('id')
         self.database.templates.create_index('bundle')
 
         self.database.templates.update_one({'id': _id}, {
@@ -277,24 +315,32 @@ class MetadataService(object):
         return {'id': _id}
 
     @rpc
-    def get_all_templates(self):
-        cursor = self.database.templates.find({}, {'_id': 0, 'svg': 0, 'queries': 0})
+    def get_all_templates(self, user):
+        cursor = self.database.templates.find({'allowed_users': user}, 
+            {'_id': 0, 'svg': 0, 'queries': 0})
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
-    def get_templates_by_bundle(self, bundle):
-        cursor = self.database.templates.find({'bundle': bundle}, {'_id': 0, 'svg': 0, 'queries': 0})
+    def get_templates_by_bundle(self, bundle, user):
+        cursor = self.database.templates.find({'bundle': bundle, 'allowed_users': user},
+            {'_id': 0, 'svg': 0, 'queries': 0})
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
-    def get_template(self, _id):
-        return bson.json_util.dumps(self.database.templates.find_one({'id': _id}, {'_id': 0}))
+    def get_template(self, _id, user):
+        return bson.json_util.dumps(self.database.templates.find_one({'id': _id, 'allowed_users': user}, 
+            {'_id': 0}))
 
     @rpc
     def add_query_to_template(self, _id, query_id, referential_parameters=None, labels=None, referential_results=None,
                               user_parameters=None):
+        template = self.database.templates.find_one({'id': _id})
+
+        if template is None:
+            raise MetadataServiceError('Template {} not found'.format(_id))
+
         query = self.database.queries.find_one({'id': query_id})
 
         if query is None:

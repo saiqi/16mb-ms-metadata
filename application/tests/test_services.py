@@ -372,11 +372,15 @@ def test_get_all_templates(database):
         'name': 'MyQuery',
         'language': 'FR',
         'context': 'ctx',
-        'bundle': 'bundle'
+        'bundle': 'bundle',
+        'allowed_users': ['admin']
     })
 
-    result = bson.json_util.loads(service.get_all_templates())
+    result = bson.json_util.loads(service.get_all_templates('admin'))
     assert len(result) == 1
+
+    result = bson.json_util.loads(service.get_all_templates('other'))
+    assert len(result) == 0
 
 
 def test_get_templates_by_bundle(database):
@@ -386,12 +390,15 @@ def test_get_templates_by_bundle(database):
         'name': 'MyQuery',
         'language': 'FR',
         'context': 'ctx',
-        'bundle': 'bundle'
+        'bundle': 'bundle',
+        'allowed_users': ['admin']
     })
 
-    result = bson.json_util.loads(service.get_templates_by_bundle('bundle'))
+    result = bson.json_util.loads(service.get_templates_by_bundle('bundle', 'admin'))
     assert len(result) == 1
 
+    result = bson.json_util.loads(service.get_templates_by_bundle('bundle', 'other'))
+    assert len(result) == 0
 
 
 def test_get_template(database):
@@ -400,11 +407,16 @@ def test_get_template(database):
         'id': '0',
         'name': 'MyQuery',
         'language': 'FR',
-        'context': 'ctx'
+        'context': 'ctx',
+        'bundle': 'bundle',
+        'allowed_users': ['admin']
     })
 
-    result = bson.json_util.loads(service.get_template('0'))
+    result = bson.json_util.loads(service.get_template('0', 'admin'))
     assert result['id'] == '0'
+
+    result = bson.json_util.loads(service.get_template('0', 'other'))
+    assert not result
 
 
 def test_add_query_to_template(database):
