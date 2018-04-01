@@ -1,5 +1,6 @@
 import datetime
 import re
+import logging
 from nameko.rpc import rpc
 from nameko.events import event_handler
 import bson.json_util
@@ -7,6 +8,7 @@ from nameko_mongodb.database import MongoDatabase
 from pymongo import ASCENDING
 import sqlparse
 
+_logger = logging.getLogger(__name__)
 
 class MetadataServiceError(Exception):
     pass
@@ -44,11 +46,13 @@ class MetadataService(object):
     @event_handler('subscription_manager', 'user_sub')
     def handle_suscription(self, payload):
         user = payload['user']
+        _logger.info('Receiving subscription for user {}'.format(user))
         if 'metadata' in payload['subscription']:
             metadata = payload['subscription']['metadata']
             old_sub = self.database.subscriptions.find_one({'user': user}, {'subscription'})
             if old_sub:
                 for t in ('templates',):
+                    _logger.info('Handling subscription for metadata type {}'.format(t))
                     self._delete_outdated_subscriptions(user, t, metadata, old_sub)
                     self._add_subscriptions(user, t, metadata)
             self.database.subscriptions.update_one({'user': user},
