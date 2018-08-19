@@ -454,3 +454,18 @@ class MetadataService(object):
         self.database.triggers.delete_one({'id': _id})
 
         return {'id': _id}
+
+    @rpc
+    def get_trigger(self, _id):
+        trigger = self.database.triggers.find_one({'id': _id}, {'_id': 0})
+        return bson.json_util.dumps(trigger)
+
+    @rpc
+    def get_all_triggers(self):
+        cursor = self.database.triggers.find({}, {'_id': 0})
+        return bson.json_util.dumps(list(cursor))
+
+    @rpc
+    def get_fired_triggers(self, event_type):
+        cursor = self.database.triggers.find({'on_event': event_type}, {'_id': 0})
+        return bson.json_util.dumps(list(cursor))

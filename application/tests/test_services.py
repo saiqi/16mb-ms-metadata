@@ -511,3 +511,36 @@ def test_delete_trigger(database):
     })
     service.delete_trigger('0')
     assert not database.triggers.find_one({'id': '0'})
+
+
+def test_get_trigger(database):
+    service = worker_factory(MetadataService, database=database)
+    database.triggers.insert_one({
+        'id': '0',
+        'on_event': 'event'
+    })
+    trigger = bson.json_util.loads(service.get_trigger('0'))
+    assert trigger
+    assert trigger['id'] == '0'
+
+
+def test_get_all_triggers(database):
+    service = worker_factory(MetadataService, database=database)
+    database.triggers.insert_one({
+        'id': '0',
+        'on_event': 'event'
+    })
+    triggers = bson.json_util.loads(service.get_all_triggers())
+    assert len(triggers) == 1
+    assert triggers[0]['id'] == '0'
+
+
+def test_get_fired_triggers(database):
+    service = worker_factory(MetadataService, database=database)
+    database.triggers.insert_one({
+        'id': '0',
+        'on_event': 'event'
+    })
+    triggers = bson.json_util.loads(service.get_fired_triggers('event'))
+    assert len(triggers) == 1
+    assert triggers[0]['id'] == '0'
