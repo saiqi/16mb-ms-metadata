@@ -423,3 +423,34 @@ class MetadataService(object):
         )
         if result.modified_count == 0:
             raise MetadataServiceError('Nothing has been updated')
+
+    @rpc
+    def add_trigger(self, _id, name, on_event, template, selector=[], export=None):
+        self.database.triggers.create_index('id', unique=True)
+        self.database.triggers.create_index('on_event')
+
+        if 'id' not in template:
+            raise MetadataServiceError('ID not found in template spec')
+
+        check = self.database.templates.find_one({'id': template['id']})
+
+        if not check:
+            raise MetadataServiceError('Template {} not found'.format(template['id']))
+
+        self.database.triggers.update_one({'id': _id}, {
+            '$set': {
+                'name': name,
+                'on_event': on_event,
+                'template': template,
+                'selector': selector,
+                'export': export
+            }
+        }, upsert=True)
+
+        return {'id': _id}
+
+    @rpc
+    def delete_trigger(self, _id):
+        self.database.triggers.delete_one({'id': _id})
+
+        return {'id': _id}

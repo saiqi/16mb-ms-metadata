@@ -485,3 +485,29 @@ def test_update_svg_in_template(database):
     service.update_svg_in_template('0', '<svg>toto</svg>')
     res = database.templates.find_one({'id': '0'})
     assert res['svg'] == '<svg>toto</svg>'
+
+
+def test_add_trigger(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'language': 'FR',
+        'context': 'ctx'
+    })
+
+    service.add_trigger('0', 'MyName', 'event', {'id': '0'})
+    res = database.triggers.find_one({'id': '0'})
+    assert res
+
+    with pytest.raises(MetadataServiceError):
+        service.add_trigger('0', 'MyName', 'event', {'id': '1'})
+
+
+def test_delete_trigger(database):
+    service = worker_factory(MetadataService, database=database)
+    database.triggers.insert_one({
+        'id': 0
+    })
+    service.delete_trigger('0')
+    assert not database.triggers.find_one({'id': '0'})
