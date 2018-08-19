@@ -294,7 +294,7 @@ class MetadataService(object):
         return bson.json_util.dumps(self.database.queries.find_one({'id': _id}, {'_id': 0}))
 
     @rpc
-    def add_template(self, _id, name, language, context, bundle, picture):
+    def add_template(self, _id, name, language, context, bundle, picture=None):
         self.database.templates.create_index([('id', ASCENDING), ('allowed_users', ASCENDING)])
         self.database.templates.create_index('id')
         self.database.templates.create_index('bundle')
@@ -339,7 +339,7 @@ class MetadataService(object):
 
     @rpc
     def add_query_to_template(self, _id, query_id, referential_parameters=None, labels=None, referential_results=None,
-                              user_parameters=None):
+                              user_parameters=None, limit=50):
         template = self.database.templates.find_one({'id': _id})
 
         if template is None:
@@ -379,7 +379,8 @@ class MetadataService(object):
                         'referential_parameters': referential_parameters,
                         'labels': labels,
                         'referential_results': referential_results,
-                        'user_parameters': user_parameters
+                        'user_parameters': user_parameters,
+                        'limit': limit
                     }
                 }
             }
@@ -393,7 +394,8 @@ class MetadataService(object):
                         'queries.$.referential_parameters': referential_parameters,
                         'queries.$.labels': labels,
                         'queries.$.referential_results': referential_results,
-                        'queries.$.user_parameters': user_parameters
+                        'queries.$.user_parameters': user_parameters,
+                        'limit': limit
                     }
                 }
             )

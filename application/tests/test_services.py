@@ -350,6 +350,10 @@ def test_add_template(database):
     assert doc['creation_date']
     assert doc['id'] == '0'
 
+    service.add_template('1', 'MyTemplate', 'FR', 'ctx', 'bundle')
+    doc = database.templates.find_one({'id': '1'})
+    assert doc['picture'] is None
+
 
 def test_delete_template(database):
     service = worker_factory(MetadataService, database=database)
@@ -439,6 +443,7 @@ def test_add_query_to_template(database):
     res = database.templates.find_one({'id': '0'})
     assert res['queries']
     assert res['queries'][0]['id'] == '0'
+    assert res['queries'][0]['limit'] == 50
 
     service.add_query_to_template('0', '0', referential_parameters=[{'titi': 'toto'}], labels={'col': 'entity'})
     res = database.templates.find_one({'id': '0'})
