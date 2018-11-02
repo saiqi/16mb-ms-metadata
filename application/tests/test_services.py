@@ -314,6 +314,22 @@ def test_delete_query(database):
     service.delete_query('0')
     assert not database.queries.find_one({'id': '0'})
 
+    database.templates.insert_one({
+        'id': '0',
+        'queries': [
+            {'id': '1'}
+        ]
+    })
+
+    database.queries.insert_one({
+        'id': '1',
+        'name': 'MyQuery',
+        'sql': 'SELECT * FROM TOTO',
+        'parameters': None
+    })
+
+    with pytest.raises(MetadataServiceError):
+        service.delete_query('1')
 
 def test_get_all_queries(database):
     service = worker_factory(MetadataService, database=database)
@@ -367,6 +383,19 @@ def test_delete_template(database):
 
     service.delete_template('0')
     assert not database.templates.find_one({'id': '0'})
+
+    database.triggers.insert_one({
+        'id': '0',
+        'template': {
+            'id': '1'
+        }
+    })
+    database.templates.insert_one({
+        'id': '1'
+    })
+
+    with pytest.raises(MetadataServiceError):
+        service.delete_template('1')
 
 
 def test_get_all_templates(database):

@@ -10,6 +10,7 @@ import sqlparse
 
 _logger = logging.getLogger(__name__)
 
+
 class MetadataServiceError(Exception):
     pass
 
@@ -49,14 +50,17 @@ class MetadataService(object):
         _logger.info('Receiving subscription for user {}'.format(user))
         if 'metadata' in payload['subscription']:
             metadata = payload['subscription']['metadata']
-            old_sub = self.database.subscriptions.find_one({'user': user}, {'subscription'})
+            old_sub = self.database.subscriptions.find_one(
+                {'user': user}, {'subscription'})
             if old_sub:
                 for t in ('templates',):
-                    _logger.info('Handling subscription for metadata type {}'.format(t))
-                    self._delete_outdated_subscriptions(user, t, metadata, old_sub)
+                    _logger.info(
+                        'Handling subscription for metadata type {}'.format(t))
+                    self._delete_outdated_subscriptions(
+                        user, t, metadata, old_sub)
                     self._add_subscriptions(user, t, metadata)
             self.database.subscriptions.update_one({'user': user},
-                {'$set': {'subscription': metadata}}, upsert=True)
+                                                   {'$set': {'subscription': metadata}}, upsert=True)
 
     @staticmethod
     def _check_function(_function):
@@ -68,7 +72,8 @@ class MetadataService(object):
         if sqls[0].get_type() != 'CREATE':
             return False
 
-        check_keywords = list(filter(lambda x: x.value in ('FUNCTION', 'LANGUAGE', 'PYTHON',), sqls[0].tokens))
+        check_keywords = list(filter(lambda x: x.value in (
+            'FUNCTION', 'LANGUAGE', 'PYTHON',), sqls[0].tokens))
 
         if len(check_keywords) != 3:
             return False
@@ -124,14 +129,16 @@ class MetadataService(object):
             raise MetadataServiceError('Unavailable types {}'.format(_type))
 
         if _input is not None and self._check_query(_input) is False:
-            raise MetadataServiceError('Bad formatted query: {}'.format(_input))
+            raise MetadataServiceError(
+                'Bad formatted query: {}'.format(_input))
 
         # if self._check_function(_function) is False:
         #     raise MetadataServiceError('Bad formatted function: {}'.format(_function))
 
         if depends_on is not None \
                 and self.database.transformations.find_one({'id': depends_on, 'job_id': job_id}) is None:
-            raise MetadataServiceError('Unknown dependency {} for job_id {}'.format(depends_on, job_id))
+            raise MetadataServiceError(
+                'Unknown dependency {} for job_id {}'.format(depends_on, job_id))
 
         output = None
         if materialized is True:
@@ -164,7 +171,8 @@ class MetadataService(object):
     @rpc
     def delete_transformation(self, _id):
         if self.database.transformations.find_one({'depends_on': _id}) is not None:
-            raise MetadataServiceError('At least one transformation depends on {}'.format(_id))
+            raise MetadataServiceError(
+                'At least one transformation depends on {}'.format(_id))
 
         self.database.transformations.delete_one({'id': _id})
 
@@ -172,7 +180,8 @@ class MetadataService(object):
 
     @rpc
     def update_process_date(self, _id):
-        self.database.transformations.update_one({'id': _id}, {'$set': {'process_date': datetime.datetime.utcnow()}})
+        self.database.transformations.update_one(
+            {'id': _id}, {'$set': {'process_date': datetime.datetime.utcnow()}})
 
     @rpc
     def get_types(self):
@@ -264,7 +273,8 @@ class MetadataService(object):
         self.database.queries.create_index('id', unique=True)
 
         if self._check_query(sql) is False:
-            raise MetadataServiceError('An error occured while parsing SQL query: {}'.format(sql))
+            raise MetadataServiceError(
+                'An error occured while parsing SQL query: {}'.format(sql))
 
         self.database.queries.update_one({'id': _id}, {
             '$set': {
@@ -279,13 +289,20 @@ class MetadataService(object):
 
     @rpc
     def delete_query(self, _id):
+        t = self.database.templates.find_one({'queries.id': _id})
+
+        if t is not None:
+            raise MetadataServiceError(
+                'Template {} depends on query {}. Cannot delete it'.format(t['id'], _id))
+
         self.database.queries.delete_one({'id': _id})
 
         return {'id': _id}
 
     @rpc
     def get_all_queries(self):
-        cursor = self.database.queries.find({}, {'_id': 0, 'sql': 0, 'parameters': 0})
+        cursor = self.database.queries.find(
+            {}, {'_id': 0, 'sql': 0, 'parameters': 0})
 
         return bson.json_util.dumps(list(cursor))
 
@@ -295,7 +312,8 @@ class MetadataService(object):
 
     @rpc
     def add_template(self, _id, name, language, context, bundle, picture=None):
-        self.database.templates.create_index([('id', ASCENDING), ('allowed_users', ASCENDING)])
+        self.database.templates.create_index(
+            [('id', ASCENDING), ('allowed_users', ASCENDING)])
         self.database.templates.create_index('id')
         self.database.templates.create_index('bundle')
 
@@ -314,28 +332,32 @@ class MetadataService(object):
 
     @rpc
     def delete_template(self, _id):
+        t = self.database.triggers.find_one({'template.id': _id})
+        if t is not None:
+            raise MetadataServiceError(
+                'Trigger {} depends on template {}. Cannot delete it'.format(t['id'], _id))
         self.database.templates.delete_one({'id': _id})
 
         return {'id': _id}
 
     @rpc
     def get_all_templates(self, user):
-        cursor = self.database.templates.find({'allowed_users': user}, 
-            {'_id': 0, 'svg': 0, 'queries': 0})
+        cursor = self.database.templates.find({'allowed_users': user},
+                                              {'_id': 0, 'svg': 0, 'queries': 0})
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
     def get_templates_by_bundle(self, bundle, user):
         cursor = self.database.templates.find({'bundle': bundle, 'allowed_users': user},
-            {'_id': 0, 'svg': 0, 'queries': 0})
+                                              {'_id': 0, 'svg': 0, 'queries': 0})
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
     def get_template(self, _id, user):
-        return bson.json_util.dumps(self.database.templates.find_one({'id': _id, 'allowed_users': user}, 
-            {'_id': 0}))
+        return bson.json_util.dumps(self.database.templates.find_one({'id': _id, 'allowed_users': user},
+                                                                     {'_id': 0}))
 
     @rpc
     def add_query_to_template(self, _id, query_id, referential_parameters=None, labels=None, referential_results=None,
@@ -353,7 +375,8 @@ class MetadataService(object):
         if referential_parameters is not None:
             query_parameters = query['parameters']
             if query_parameters is None:
-                raise MetadataServiceError('Query {} does not have parameters'.format(query_id))
+                raise MetadataServiceError(
+                    'Query {} does not have parameters'.format(query_id))
             check_ref_params = [list(r.keys())[0] for r in referential_parameters if
                                 list(r.keys())[0] in query_parameters]
 
@@ -435,7 +458,8 @@ class MetadataService(object):
         check = self.database.templates.find_one({'id': template['id']})
 
         if not check:
-            raise MetadataServiceError('Template {} not found'.format(template['id']))
+            raise MetadataServiceError(
+                'Template {} not found'.format(template['id']))
 
         self.database.triggers.update_one({'id': _id}, {
             '$set': {
@@ -467,5 +491,6 @@ class MetadataService(object):
 
     @rpc
     def get_fired_triggers(self, event_type):
-        cursor = self.database.triggers.find({'on_event': event_type}, {'_id': 0})
+        cursor = self.database.triggers.find(
+            {'on_event': event_type}, {'_id': 0})
         return bson.json_util.dumps(list(cursor))
