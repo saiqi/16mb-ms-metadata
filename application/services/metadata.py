@@ -343,14 +343,16 @@ class MetadataService(object):
     @rpc
     def get_all_templates(self, user):
         cursor = self.database.templates.find({'allowed_users': user},
-                                              {'_id': 0, 'svg': 0, 'queries': 0})
+                                              {'_id': 0, 'svg': 0, 'queries': 0})\
+                                              .sort('id', ASCENDING)
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
     def get_templates_by_bundle(self, bundle, user):
         cursor = self.database.templates.find({'bundle': bundle, 'allowed_users': user},
-                                              {'_id': 0, 'svg': 0, 'queries': 0})
+                                              {'_id': 0, 'svg': 0, 'queries': 0})\
+                                              .sort('id', ASCENDING)
 
         return bson.json_util.dumps(list(cursor))
 
