@@ -440,10 +440,23 @@ class MetadataService(object):
     @rpc
     def update_svg_in_template(self, _id, svg):
         result = self.database.templates.update_one(
-            {'id': _id},
+            {'id': _id, 'kind': 'image'},
             {
                 '$set': {
                     'svg': svg
+                }
+            }
+        )
+        if result.modified_count == 0:
+            raise MetadataServiceError('Nothing has been updated')
+
+    @rpc
+    def update_html_in_template(self, _id, html):
+        result = self.database.templates.update_one(
+            {'id': _id, 'kind': 'widget'},
+            {
+                '$set': {
+                    'html': html
                 }
             }
         )

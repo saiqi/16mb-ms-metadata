@@ -509,11 +509,26 @@ def test_update_svg_in_template(database):
         'id': '0',
         'name': 'MyQuery',
         'language': 'FR',
-        'context': 'ctx'
+        'context': 'ctx',
+        'kind': 'image'
     })
     service.update_svg_in_template('0', '<svg>toto</svg>')
     res = database.templates.find_one({'id': '0'})
     assert res['svg'] == '<svg>toto</svg>'
+
+
+def test_update_html_in_template(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_one({
+        'id': '0',
+        'name': 'MyQuery',
+        'language': 'FR',
+        'context': 'ctx',
+        'kind': 'widget'
+    })
+    service.update_html_in_template('0', '<body>toto</body>')
+    res = database.templates.find_one({'id': '0'})
+    assert res['html'] == '<body>toto</body>'
 
 
 def test_add_trigger(database):
