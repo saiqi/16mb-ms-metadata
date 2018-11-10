@@ -311,7 +311,7 @@ class MetadataService(object):
         return bson.json_util.dumps(self.database.queries.find_one({'id': _id}, {'_id': 0}))
 
     @rpc
-    def add_template(self, _id, name, language, context, bundle, picture=None, kind='image'):
+    def add_template(self, _id, name, language, context, bundle, picture=None, kind='image', datasource=None):
         self.database.templates.create_index(
             [('id', ASCENDING), ('allowed_users', ASCENDING)])
         self.database.templates.create_index('id')
@@ -325,7 +325,8 @@ class MetadataService(object):
                 'bundle': bundle,
                 'creation_date': datetime.datetime.utcnow(),
                 'picture': picture,
-                'kind': kind
+                'kind': kind,
+                'datasource': datasource
             }
         }, upsert=True)
 
