@@ -588,3 +588,44 @@ def test_get_fired_triggers(database):
     triggers = bson.json_util.loads(service.get_fired_triggers('event'))
     assert len(triggers) == 1
     assert triggers[0]['id'] == '0'
+
+
+def test_handle_subscription(database):
+    service = worker_factory(MetadataService, database=database)
+    database.templates.insert_many([
+        {
+            'id': '0',
+            'allowed_users': []
+        },
+        {
+            'id': '1',
+            'allowed_users': []
+        }
+    ])
+    sub = {
+        'user': 'foo',
+        'subscription': {
+            'metadata': {
+                'templates': ['0', '1']
+            }
+        }
+    }
+    service.handle_suscription(sub)
+    t = database.templates.find_one({'id': '0'})
+    assert t['allowed_users'] == ['foo']
+
+    new_sub = {
+        'user': 'foo',
+        'subscription': {
+            'metadata': {
+                'templates': ['1']
+            }
+        }
+    }
+
+    service.handle_suscription(new_sub)
+    t = database.templates.find_one({'id': '0'})
+    assert t['allowed_users'] == []
+
+    s = database.subscriptions.find_one({'user': 'foo'})
+    assert s['subscription']['templates'] == ['1']

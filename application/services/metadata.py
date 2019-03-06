@@ -24,7 +24,7 @@ class MetadataService(object):
 
     def _delete_outdated_subscriptions(self, user, meta_type, new_sub, old_sub):
         old = set()
-        if meta_type in old_sub:
+        if 'subscription' in old_sub and meta_type in old_sub['subscription']:
             old = set(r for r in old_sub['subscription'][meta_type])
 
         new = set()
@@ -33,7 +33,7 @@ class MetadataService(object):
 
         diff = old - new
         self.database[meta_type].update_many(
-            {meta_type: {'$in': list(diff)}},
+            {'id': {'$in': list(diff)}},
             {'$pull': {'allowed_users': user}}
         )
 
@@ -52,13 +52,13 @@ class MetadataService(object):
             metadata = payload['subscription']['metadata']
             old_sub = self.database.subscriptions.find_one(
                 {'user': user}, {'subscription'})
-            if old_sub:
-                for t in ('templates',):
-                    _logger.info(
-                        'Handling subscription for metadata type {}'.format(t))
+            for t in ('templates',):
+                _logger.info(
+                    'Handling subscription for metadata type {}'.format(t))
+                if old_sub:
                     self._delete_outdated_subscriptions(
                         user, t, metadata, old_sub)
-                    self._add_subscriptions(user, t, metadata)
+                self._add_subscriptions(user, t, metadata)
             self.database.subscriptions.update_one({'user': user},
                                                    {'$set': {'subscription': metadata}}, upsert=True)
 
