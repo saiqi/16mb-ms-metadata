@@ -2,4 +2,18 @@ AMQP_URI: pyamqp://${RABBITMQ_USER:rabbitmq}:${RABBITMQ_PASSWORD:rabbitmq}@${RAB
 max_workers: 10
 parent_calls_tracked: 10
 
+LOGGING:
+    version: 1
+    formatters:
+        standard: 
+            format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    handlers:
+        console:
+            level: INFO
+            formatter: standard
+            class: logging.StreamHandler
+    root:
+        level: INFO
+        handlers: [console]
+
 MONGODB_CONNECTION_URL: ${MONGODB_CONNECTION_URL}
