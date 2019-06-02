@@ -465,7 +465,7 @@ class MetadataService(object):
             raise MetadataServiceError('Nothing has been updated')
 
     @rpc
-    def add_trigger(self, _id, name, on_event, template, selector=[], export=None):
+    def add_trigger(self, _id, name, on_event, template, user, selector=[], export=None):
         self.database.triggers.create_index('id', unique=True)
         self.database.triggers.create_index('on_event')
 
@@ -477,6 +477,9 @@ class MetadataService(object):
         if not check:
             raise MetadataServiceError(
                 'Template {} not found'.format(template['id']))
+
+        if user not in check['allowed_users']:
+            raise MetadataServiceError(f'{user} is not allowed to handle {check["id"]}')
 
         self.database.triggers.update_one({'id': _id}, {
             '$set': {
