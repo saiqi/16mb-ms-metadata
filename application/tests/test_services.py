@@ -587,9 +587,9 @@ def test_get_fired_triggers(database):
     service = worker_factory(MetadataService, database=database)
     database.triggers.insert_one({
         'id': '0',
-        'on_event': 'event'
+        'on_event': {'type': 'foo', 'source': 'bar'}
     })
-    triggers = bson.json_util.loads(service.get_fired_triggers('event'))
+    triggers = bson.json_util.loads(service.get_fired_triggers({'type': 'foo', 'source': 'bar'}))
     assert len(triggers) == 1
     assert triggers[0]['id'] == '0'
 

@@ -3,6 +3,7 @@ import re
 import logging
 from nameko.rpc import rpc
 from nameko.events import event_handler
+from nameko.dependency_providers import DependencyProvider
 import bson.json_util
 from nameko_mongodb.database import MongoDatabase
 from pymongo import ASCENDING
@@ -11,13 +12,23 @@ import sqlparse
 _logger = logging.getLogger(__name__)
 
 
+class ErrorHandler(DependencyProvider):
+
+    def worker_result(self, worker_ctx, res, exc_info):
+        if exc_info is None:
+            return
+
+        exc_type, exc, tb = exc_info
+        _logger.error(str(exc))
+
+
 class MetadataServiceError(Exception):
     pass
 
 
 class MetadataService(object):
     name = 'metadata'
-
+    error = ErrorHandler()
     database = MongoDatabase(result_backend=False)
 
     TYPES = ['transform', 'predict', 'fit']
@@ -345,7 +356,7 @@ class MetadataService(object):
     @rpc
     def get_all_templates(self, user):
         cursor = self.database.templates.find({'allowed_users': user},
-                                              {'_id': 0, 'svg': 0, 'queries': 0})\
+                                              {'_id': 0, 'svg': 0, 'queries': 0, 'allowed_users': 0})\
                                               .sort('id', ASCENDING)
 
         return bson.json_util.dumps(list(cursor))
@@ -467,7 +478,8 @@ class MetadataService(object):
     @rpc
     def add_trigger(self, _id, name, on_event, template, user, selector=[], export=None):
         self.database.triggers.create_index('id', unique=True)
-        self.database.triggers.create_index('on_event')
+        self.database.triggers.create_index([('on_event.type', ASCENDING), 
+            ('on_event.source', ASCENDING)])
 
         if 'id' not in template:
             raise MetadataServiceError('ID not found in template spec')
@@ -512,5 +524,6 @@ class MetadataService(object):
     @rpc
     def get_fired_triggers(self, event_type):
         cursor = self.database.triggers.find(
-            {'on_event': event_type}, {'_id': 0})
+            {'on_event.type': event_type['type'], 'on_event.source': event_type['source']}, 
+            {'_id': 0})
         return bson.json_util.dumps(list(cursor))
