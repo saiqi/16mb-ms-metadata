@@ -544,6 +544,7 @@ def test_add_trigger(database):
     service.add_trigger('0', 'MyName', 'event', {'id': '0'}, 'foo')
     res = database.triggers.find_one({'id': '0'})
     assert res
+    assert 'user' in res
 
     with pytest.raises(MetadataServiceError):
         service.add_trigger('1', 'MyName', 'event', {'id': '1'}, 'foo')

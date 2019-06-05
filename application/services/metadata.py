@@ -499,6 +499,7 @@ class MetadataService(object):
                 'on_event': on_event,
                 'template': template,
                 'selector': selector,
+                'user': user,
                 'export': export
             }
         }, upsert=True)
