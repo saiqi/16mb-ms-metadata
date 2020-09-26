@@ -105,12 +105,12 @@ class MetadataService(object):
 
     @staticmethod
     def _extract_function_name(_function):
-        regex = re.search(r'CREATE FUNCTION ([A-Za-z_]+)', _function)
+        regex = re.search(r'CREATE (FUNCTION|AGGREGATE) ([A-Za-z_]+)', _function)
 
         if regex is not None:
-            return regex.group(1)
+            return regex.group(2)
 
-        return None
+        raise MetadataServiceError(f'Could not extract function name from: {_function}')
 
     @staticmethod
     def _build_output(_input, function_name):
