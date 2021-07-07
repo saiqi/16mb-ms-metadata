@@ -353,18 +353,24 @@ class MetadataService(object):
 
         return {'id': _id}
 
+    @staticmethod
+    def __build_projection_doc(include_svg):
+        if not include_svg:
+            return {'_id': 0, 'svg': 0, 'queries': 0, 'allowed_users': 0}
+        return {'_id': 0, 'queries': 0, 'allowed_users': 0}
+
     @rpc
-    def get_all_templates(self, user):
+    def get_all_templates(self, user, include_svg = False):
         cursor = self.database.templates.find({'allowed_users': user},
-                                              {'_id': 0, 'svg': 0, 'queries': 0, 'allowed_users': 0})\
+                                              MetadataService.__build_projection_doc(include_svg))\
                                               .sort('id', ASCENDING)
 
         return bson.json_util.dumps(list(cursor))
 
     @rpc
-    def get_templates_by_bundle(self, bundle, user):
+    def get_templates_by_bundle(self, bundle, user, include_svg = False):
         cursor = self.database.templates.find({'bundle': bundle, 'allowed_users': user},
-                                              {'_id': 0, 'svg': 0, 'queries': 0})\
+                                              MetadataService.__build_projection_doc(include_svg))\
                                               .sort('id', ASCENDING)
 
         return bson.json_util.dumps(list(cursor))

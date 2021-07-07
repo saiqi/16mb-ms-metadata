@@ -406,14 +406,20 @@ def test_get_all_templates(database):
         'language': 'FR',
         'context': 'ctx',
         'bundle': 'bundle',
-        'allowed_users': ['admin']
+        'allowed_users': ['admin'],
+        'svg': '<svg></svg>'
     })
 
     result = bson.json_util.loads(service.get_all_templates('admin'))
     assert len(result) == 1
+    assert 'svg' not in result[0]
 
     result = bson.json_util.loads(service.get_all_templates('other'))
     assert len(result) == 0
+
+    result = bson.json_util.loads(service.get_all_templates('admin', include_svg=True))
+    assert len(result) == 1
+    assert 'svg' in result[0]
 
 
 def test_get_templates_by_bundle(database):
